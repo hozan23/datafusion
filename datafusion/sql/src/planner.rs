@@ -788,6 +788,19 @@ impl<'a, S: ContextProvider> SqlToRel<'a, S> {
                 };
                 Ok(DataType::Timestamp(precision, tz.map(Into::into)))
             }
+            // MySQL `DATETIME`: no time zone, whole seconds by default and a
+            // fractional-seconds precision of at most 6
+            SQLDataType::Datetime(precision)
+                if precision.is_none() || [0, 3, 6].contains(&precision.unwrap()) =>
+            {
+                let precision = match precision {
+                    None | Some(0) => TimeUnit::Second,
+                    Some(3) => TimeUnit::Millisecond,
+                    Some(6) => TimeUnit::Microsecond,
+                    _ => unreachable!(),
+                };
+                Ok(DataType::Timestamp(precision, None))
+            }
             SQLDataType::Date => Ok(DataType::Date32),
             SQLDataType::Time(None, tz_info) => {
                 if *tz_info == TimezoneInfo::None

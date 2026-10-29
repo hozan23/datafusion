@@ -7171,3 +7171,41 @@ RESET datafusion.explain.physical_plan_only;
 
 statement ok
 SET datafusion.execution.target_partitions = 4;
+
+##########
+## DATETIME (MySQL): no time zone, whole seconds by default, precision at most 6
+##########
+
+query PT
+SELECT CAST('2026-09-21 08:55:40.006789' AS DATETIME), arrow_typeof(CAST('2026-09-21 08:55:40' AS DATETIME))
+----
+2026-09-21T08:55:40 Timestamp(s)
+
+query PT
+SELECT CAST('2026-09-21 08:55:40.006789' AS DATETIME(0)), arrow_typeof(CAST('2026-09-21 08:55:40' AS DATETIME(0)))
+----
+2026-09-21T08:55:40 Timestamp(s)
+
+query PT
+SELECT CAST('2026-09-21 08:55:40.006789' AS DATETIME(3)), arrow_typeof(CAST('2026-09-21 08:55:40' AS DATETIME(3)))
+----
+2026-09-21T08:55:40.006 Timestamp(ms)
+
+query PT
+SELECT CAST('2026-09-21 08:55:40.006789' AS DATETIME(6)), arrow_typeof(CAST('2026-09-21 08:55:40' AS DATETIME(6)))
+----
+2026-09-21T08:55:40.006789 Timestamp(µs)
+
+statement ok
+CREATE TABLE datetime_t (dt DATETIME(3)) AS VALUES ('2026-09-21 08:55:40.006');
+
+query PT
+SELECT dt, arrow_typeof(dt) FROM datetime_t
+----
+2026-09-21T08:55:40.006 Timestamp(ms)
+
+statement ok
+DROP TABLE datetime_t;
+
+statement error Unsupported SQL type DATETIME\(9\)
+SELECT CAST('2026-09-21 08:55:40' AS DATETIME(9));
